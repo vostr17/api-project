@@ -17,7 +17,7 @@ class YandexDiskAPI:
         response = requests.put(self.main_url,
                                 headers = self.headers,
                                 params = params)
-        return response.status_code
+        return response.status_code # == 201
 
     # Функция удаляет папку с ЯндексДиска
     def delete_folder(self, folder):
@@ -34,7 +34,7 @@ class YandexDiskAPI:
         response = requests.post(f'{self.main_url}/upload', headers = self.headers,
                                  params = params)
 
-        return response.status_code# == 202
+        return response.status_code == 202
 
     # Функция возвращает словарь из имени файла и его размера
     def file_size(self, filename):
@@ -43,6 +43,15 @@ class YandexDiskAPI:
                                 params = params)
         result = {'filename': filename, 'size': response.json()['size']}
         return result
+
+    # Функция создаёт файл с информацией о содержании и размере под-папок и файлов
+    def file_info_yd(self, url, path):
+        params = {'path': path}
+        response = requests.put(url,
+                                headers = self.headers,
+                                params = params)
+        return response.status_code # == 200
+        pass
 
     # Функция записывает json-файл с компьютера на ЯндексДиск
     def save_json_yd(self, path_d, path_yd):
@@ -100,45 +109,50 @@ class DogAPI:
         else:
             image_url = f'{self.main_url}/{self.breed}/{sub_breed}/images/random'
 
-print('Программа для резервного копирования изображений пород собак с сайта https://dog.ceo.')
-breed = input('Введите породу собаки на английском языке: ').strip().lower()
-my_dog = DogAPI(breed)
+    # Функция получает список всех пород и подпород собак с сайта с собаками
+    def all_breed_list(self):
+        url = f'{self.main_url}s/list/all'
+        response = requests.get(url)
+        return response.json()['message']
+        pass
 
-if not my_dog.is_breed_exist():
-    print('Такая порода не найдена')
-    sys.exit(0)
-
-yd_token = input('Введите токен ЯндексДиска:')# y0__xCCgIVlGNuWAyDXjfSFFnGE4-xL-wOxU1a6WUtzfUrOx5Ug
+# Основная программа
+print('Программа для резервного копирования картинок пород собак c сайта https://dog.ceo.')
+yd_token = input('Введите токен ЯндексДиска:')
+path_ydisk = input('Введите имя папки для сохранения:')
 info_file = []
-path_yd = input('Введите имя папки для копирования:') #'PY-142'
+my_dog = DogAPI(breed = 'husky')
 my_dog_yd = YandexDiskAPI(yd_token)
-my_dog_yd.create_folder(f'{path_yd}')
-if my_dog_yd.create_folder(f'{path_yd}/{breed}') == 201:
-    print(f'Папка {path_yd} успешно создана на ЯндексДиске')
-elif my_dog_yd.create_folder(f'{path_yd}/{breed}') == 409:
-    print(f'Папка {path_yd} уже существует на ЯндексДиске')
+
+if my_dog_yd.create_folder(f'{path_ydisk}') == 201:
+    print(f'Папка {path_ydisk} успешно создана на ЯндексДиске')
+elif my_dog_yd.create_folder(f'{path_ydisk}') == 409:
+    print(f'Папка {path_ydisk} уже существует на ЯндексДиске')
 elif my_dog_yd.create_folder(f'{path_yd}/{breed}') == 401:
     print(f'Не правильный токен для авторизации на ЯндексДиске')
     sys.exit(0)
 
-if len(my_dog.sub_breed_list()) == 0: # если у породы нет под-пород
-    for i in tqdm(range(1)):
+for breed in tqdm(my_dog.all_breed_list()):
+
+    my_dog_yd.create_folder(f'{path_ydisk}/{breed}')
+    if len(my_dog.sub_breed_list()) == 0: # если у породы нет под-пород
         image_url = my_dog.image_url(breed)
         image_filename = my_dog.image_filename(image_url)
-        my_dog_yd.upload_file(f'{path_yd}/{breed}/{image_filename}', image_url)
+        my_dog_yd.upload_file(f'{path_ydisk}/{breed}/{image_filename}', image_url)
         sleep(3)
-        info_file.append(my_dog_yd.file_size(f'{path_yd}/{breed}/{image_filename}'))
-else:
+        info_file.append(my_dog_yd.file_size(f'{path_ydisk}/{breed}/{image_filename}'))
+    else:
 
-    for sub_breed in tqdm(my_dog.sub_breed_list()):
-        image_url = my_dog.image_url(sub_breed)
-        image_filename = my_dog.image_filename(image_url)
-        my_dog_yd.upload_file(f'{path_yd}/{breed}/{image_filename}', image_url)
-        sleep(3)
-        info_file.append(my_dog_yd.file_size(f'{path_yd}/{breed}/{image_filename}'))
+        for sub_breed in my_dog.sub_breed_list():
+            image_url = my_dog.image_url(sub_breed)
+            image_filename = my_dog.image_filename(image_url)
+            my_dog_yd.upload_file(f'{path_ydisk}/{breed}/{image_filename}', image_url)
+            sleep(3)
+            info_file.append(my_dog_yd.file_size(f'{path_ydisk}/{breed}/{image_filename}'))
 
 
 with open("info.json", "w", encoding="utf-8") as file:
     json.dump(info_file, file, ensure_ascii=False)
-my_dog_yd.save_json_yd('info.json', f'{path_yd}/{breed}/info.json')
+my_dog_yd.save_json_yd('info.json', f'{path_ydisk}/info.json')
+
 print('Программа успешно закончила работу.')
