@@ -108,9 +108,9 @@ if not my_dog.is_breed_exist():
     print('Такая порода не найдена')
     sys.exit(0)
 
-yd_token = input('Введите токен ЯндексДиска:')# y0__xCCgIVlGNuWAyDXjfSFFnGE4-xL-wOxU1a6WUtzfUrOx5Ug
+yd_token = input('Введите токен ЯндексДиска:')
 info_file = []
-path_yd = input('Введите имя папки для копирования:') #'PY-142'
+path_yd = input('Введите имя папки для копирования:')
 my_dog_yd = YandexDiskAPI(yd_token)
 my_dog_yd.create_folder(f'{path_yd}')
 if my_dog_yd.create_folder(f'{path_yd}/{breed}') == 201:
